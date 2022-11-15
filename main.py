@@ -20,8 +20,7 @@ def get_cmd_args():
     parser = argparse.ArgumentParser(description='HW1 program.')
     parser.add_argument('mesh_name',
                         choices=[
-                            'bunny', 'dragon', 'fandisk', 'spot',
-                            'bunny_with_hole', 'spot_with_hole'
+                            'spot'
                         ],
                         help='Input mesh name (choices are bunny, dragon, fandisk, and spot)')
     parser.add_argument('mode', choices=['bf', 'fast', 'approx', 'mc'],
@@ -69,7 +68,7 @@ def run_marching_cubes(voxel_file_path: str, mesh_name: str):
     # Create the result folder if it doesn't exist, e.g., the output for voxel grid 'bunny'
     # will be stored in '.../hw1_alternative/data/assignment1/results/bunny_mc'
     result_folder = \
-        os.path.join(ROOT_DIR, 'data', 'assignment1', 'results', f'{mesh_name}_mc')
+        os.path.join(ROOT_DIR, 'tree-support-comp-fab', f'{mesh_name}_mc')
     os.makedirs(result_folder, mode=0o775, exist_ok=True)
 
     # Save the mesh into the result folder
@@ -114,7 +113,7 @@ def run_voxelization(voxelizer: Voxelizer, mode: str, check_result: bool=True,
     # will be stored in '.../hw2_alternative/data/assignment2/results/bunny'
     result_folder_name = mesh_name + '_fast' * (mode == 'fast')
     result_folder = \
-        os.path.join(ROOT_DIR, 'data', 'assignment1', 'results', result_folder_name)
+        os.path.join(ROOT_DIR, 'tree-support-comp-fab', result_folder_name)
     os.makedirs(result_folder, mode=0o775, exist_ok=True)
 
     # Save the voxel grid as a triangle mesh for visualization
@@ -177,8 +176,7 @@ def main():
     if args.mode == 'mc':
         # Set the path to the voxel data file according to mesh name
         voxel_file_path = \
-            os.path.join(ROOT_DIR, 'data', 'assignment1', 'references', mesh_name,
-                         f'{mesh_name}_voxel_data.npz')
+            os.path.join(ROOT_DIR, 'tree-support-comp-fab', f'{mesh_name}_voxel_data.npz')
 
         # Run marching cubes
         run_marching_cubes(voxel_file_path, mesh_name)
@@ -186,7 +184,7 @@ def main():
     # Run voxelization
     else:
         # Set the path to the STL mesh file according to mesh name
-        stl_file_path = os.path.join(ROOT_DIR, 'data', 'assignment1', f'{mesh_name}.stl')
+        stl_file_path = os.path.join(ROOT_DIR, 'tree-support-comp-fab', f'{mesh_name}.stl')
 
         # Create a voxelizer using the source STL file
         voxelizer = Voxelizer(stl_file_path, voxel_size)

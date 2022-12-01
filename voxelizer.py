@@ -119,7 +119,7 @@ class Voxelizer:
                         bottom_origins.append(ray_origin)
                         # print(locations)
                         if locations:
-                            bottom_intersections.append((min(locations), x, z))
+                            bottom_intersections.append((min(locations), x, y, z))
                         # if len(locations) % 2 == 1:
                         #     print("YESSIE")
                     

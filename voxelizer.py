@@ -96,7 +96,7 @@ class Voxelizer:
         # Compute the center of the bottom-left voxel, which we use to derive the centers of
         # other voxels
         voxel_bottom_left = self.voxel_grid_min + dx * 0.5
-
+    
         bottom_origins = []
         bottom_intersections = []
         # Loop over all positions in the voxel grid
@@ -114,25 +114,24 @@ class Voxelizer:
                     # Intersect the ray with the mesh and get the intersection locations
                     locations = single_ray_mesh_intersection(mesh, ray_origin, ray_direction)
 
-                    if ray_origin[1] <= -4.9:
-                        #print("YUH")
+                    if ray_origin[1] <= -4.98:
                         bottom_origins.append(ray_origin)
-                        # print(locations)
                         if locations:
-                            bottom_intersections.append((min(locations), x, y, z))
-                        # if len(locations) % 2 == 1:
-                        #     print("YESSIE")
+                            y_val = min(locations)
+                            bottom_intersections.append((y_val, x, y, z))
+                            voxels[x, int(y_val / self.voxel_size), z] = 1
+                    
                     
                     # Determine whether the voxel at the current grid point is inside the mesh.
                     # Recall from lectures that an odd number of intersections means inside
-                    if len(locations) % 2 == 0:
-                        voxels[x, y, z] = 0
-                    else:
-                        voxels[x, y, z] = 1
+                    # if len(locations) % 2 == 0:
+                    #     voxels[x, y, z] = 0
+                    # else:
+                    #     voxels[x, y, z] = 1
 
             print(f'Completed layer {x + 1} / {nx}')
 
-        print(bottom_intersections)
+        # print(bottom_intersections)
         # Compute the occupancy of the voxel grid, i.e., the fraction of voxels inside the mesh
         occupancy = np.count_nonzero(voxels) / voxels.size
         return occupancy

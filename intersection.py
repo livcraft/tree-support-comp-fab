@@ -146,6 +146,7 @@ def ray_mesh_intersection(mesh: Trimesh, ray_origins: np.ndarray, ray_directions
         # Select hitting rays
         hit_mask = query != NO_HIT
         hit_indices = current_indices[hit_mask]
+
         hit_triangles = query[hit_mask]
 
         # Quit the loop if no more hits are detected

@@ -97,6 +97,8 @@ class Voxelizer:
         # other voxels
         voxel_bottom_left = self.voxel_grid_min + dx * 0.5
 
+        bottom_origins = []
+        bottom_intersections = []
         # Loop over all positions in the voxel grid
         # Note that this nested loop is slow and might run for several minutes
         for x in range(nx):   
@@ -105,12 +107,21 @@ class Voxelizer:
 
                     # Set ray origin as the current voxel center
                     ray_origin = np.array([(x*dx) + voxel_bottom_left[0], (y*dx) + voxel_bottom_left[1], (z*dx) + voxel_bottom_left[2]])
-
+                    
                     # Set ray direction as positive X direction by default
-                    ray_direction = np.array([1.0, 0.0, 0.0])
+                    ray_direction = np.array([0.0, 1.0, 0.0])
 
                     # Intersect the ray with the mesh and get the intersection locations
                     locations = single_ray_mesh_intersection(mesh, ray_origin, ray_direction)
+
+                    if ray_origin[1] <= -4.9:
+                        #print("YUH")
+                        bottom_origins.append(ray_origin)
+                        # print(locations)
+                        if locations:
+                            bottom_intersections.append((min(locations), x, z))
+                        # if len(locations) % 2 == 1:
+                        #     print("YESSIE")
                     
                     # Determine whether the voxel at the current grid point is inside the mesh.
                     # Recall from lectures that an odd number of intersections means inside
@@ -121,6 +132,7 @@ class Voxelizer:
 
             print(f'Completed layer {x + 1} / {nx}')
 
+        print(bottom_intersections)
         # Compute the occupancy of the voxel grid, i.e., the fraction of voxels inside the mesh
         occupancy = np.count_nonzero(voxels) / voxels.size
         return occupancy

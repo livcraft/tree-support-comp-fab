@@ -81,6 +81,13 @@ class Voxelizer:
         self.voxels = voxels
 
 
+    def get_support_points(self, bottom_intersections) -> list:
+        """
+        given a list of the bottom layer of an object, returns
+        the list of support points for overhangs
+        """
+
+
     def run_brute_force(self) -> float:
         '''
         Run brute-force voxelization.
@@ -118,20 +125,26 @@ class Voxelizer:
                         bottom_origins.append(ray_origin)
                         if locations:
                             y_val = int(min(locations) / self.voxel_size)
-                            
                             bottom_intersections.append((x, y_val, z))
-                            voxels[x, y_val, z] = 1
+                            
                     
                     # Determine whether the voxel at the current grid point is inside the mesh.
                     # Recall from lectures that an odd number of intersections means inside
-                    # if len(locations) % 2 == 0:
-                    #     voxels[x, y, z] = 0
-                    # else:
-                    #     voxels[x, y, z] = 1
+                    if len(locations) % 2 == 0:
+                        voxels[x, y, z] = 0
+                    else:
+                        voxels[x, y, z] = 1
 
             print(f'Completed layer {x + 1} / {nx}')
 
-        print (bottom_intersections)
+        
+        # use bottom_intersections to get support points
+        support_points = self.get_support_points(bottom_intersections)
+
+        #generate voxels for support points
+
+        #make this a loop while support points still exist
+
         # Compute the occupancy of the voxel grid, i.e., the fraction of voxels inside the mesh
         occupancy = np.count_nonzero(voxels) / voxels.size
         return occupancy

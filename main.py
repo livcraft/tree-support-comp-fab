@@ -176,7 +176,7 @@ def main():
     if args.mode == 'mc':
         # Set the path to the voxel data file according to mesh name
         voxel_file_path = \
-            os.path.join(ROOT_DIR, 'tree-support-comp-fab', f'{mesh_name}_voxel_data.npz')
+            os.path.join(ROOT_DIR, 'tree-support-comp-fab', 'spot', f'{mesh_name}_voxel_data.npz')
 
         # Run marching cubes
         run_marching_cubes(voxel_file_path, mesh_name)

@@ -117,10 +117,10 @@ class Voxelizer:
                     if ray_origin[1] <= -4.98:
                         bottom_origins.append(ray_origin)
                         if locations:
-                            y_val = min(locations)
-                            bottom_intersections.append((y_val, x, y, z))
-                            voxels[x, int(y_val / self.voxel_size), z] = 1
-                    
+                            y_val = int(min(locations) / self.voxel_size)
+                            
+                            bottom_intersections.append((x, y_val, z))
+                            voxels[x, y_val, z] = 1
                     
                     # Determine whether the voxel at the current grid point is inside the mesh.
                     # Recall from lectures that an odd number of intersections means inside
@@ -131,7 +131,7 @@ class Voxelizer:
 
             print(f'Completed layer {x + 1} / {nx}')
 
-        # print(bottom_intersections)
+        print (bottom_intersections)
         # Compute the occupancy of the voxel grid, i.e., the fraction of voxels inside the mesh
         occupancy = np.count_nonzero(voxels) / voxels.size
         return occupancy

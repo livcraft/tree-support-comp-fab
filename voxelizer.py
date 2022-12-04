@@ -118,13 +118,15 @@ class Voxelizer:
 
                     support_pts[pt] = new_y
 
-        # [x, y, z, label]
-        model = self.clustering(support_pts)
-        print(model)
+        clusters = self.clustering(support_pts)
 
         return support_pts
 
     def clustering(self, points):
+        """
+        given a list of support points, returns a map that clusters closest
+        support points together using DBSCAN
+        """
         data = []
 
         for pt, y in points.items():
@@ -136,15 +138,24 @@ class Voxelizer:
         labels = model.labels_
         num_labels  = len(set(labels))
 
-        fig = plt.figure()
-        ax = Axes3D(fig)
-        ax.scatter(data[:,0], data[:,1], data[:,2], c=model.labels_, s=300)
-        ax.view_init(azim=200)
-        plt.show()
+        # fig = plt.figure()
+        # ax = Axes3D(fig)
+        # ax.scatter(data[:,0], data[:,1], data[:,2], c=model.labels_, s=300)
+        # ax.view_init(azim=200)
+        # plt.show()
         
         samples_w_lbls = np.concatenate((data,labels[:,np.newaxis]),axis=1)
 
-        return samples_w_lbls
+        # reformat to a dictionary mapping cluster -> cluster members
+        clusters = {}
+
+        for sample in samples_w_lbls:
+            if sample[3] not in clusters:
+                clusters[sample[3]] = [(sample[0], sample[1], sample[2])]
+            else:
+                clusters[sample[3]].append((sample[0], sample[1], sample[2]))
+
+        return clusters
 
 
 

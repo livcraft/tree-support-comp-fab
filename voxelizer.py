@@ -9,7 +9,7 @@ from typing import List
 import os
 import trimesh
 import numpy as np
-
+from sklearn.cluster import DBSCAN
 
 def write_triangle(f: TextIOWrapper, p1: np.ndarray, p2: np.ndarray, p3: np.ndarray,
                    normal: List[float]):
@@ -115,7 +115,29 @@ class Voxelizer:
 
                     support_pts[pt] = new_y
 
+        model = self.clustering(support_pts)
+        print(model)
+
         return support_pts
+
+    def clustering(self, points):
+        data = []
+
+        for pt, y in points.items():
+            data.append([pt[0], y, pt[1]])
+
+        model = DBSCAN(eps=2.5, min_samples=2)
+        model.fit_predict(data)
+        pred = model.fit_predict(data)
+
+        # fig = plt.figure()
+        # ax = Axes3D(fig)
+        # ax.scatter(data[:,0], data[:,1], data[:,2], c=model.labels_, s=300)
+        # ax.view_init(azim=200)
+        # plt.show()
+
+        return model.labels
+
 
 
 

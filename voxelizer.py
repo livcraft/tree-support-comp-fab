@@ -131,9 +131,16 @@ class Voxelizer:
             data.append([pt[0], y, pt[1]])
 
         model = DBSCAN(eps=2.5, min_samples=2)
-        model.fit_predict(np.array(data))
+        data = np.array(data)
+        model.fit_predict(data)
         labels = model.labels_
         num_labels  = len(set(labels))
+
+        fig = plt.figure()
+        ax = Axes3D(fig)
+        ax.scatter(data[:,0], data[:,1], data[:,2], c=model.labels_, s=300)
+        ax.view_init(azim=200)
+        plt.show()
         
         samples_w_lbls = np.concatenate((data,labels[:,np.newaxis]),axis=1)
 

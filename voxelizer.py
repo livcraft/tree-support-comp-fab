@@ -81,11 +81,42 @@ class Voxelizer:
         self.voxels = voxels
 
 
-    def get_support_points(self, bottom_intersections) -> list:
+    def get_support_points(self, bottom_intersections):
         """
         given a list of the bottom layer of an object, returns
         the list of support points for overhangs
         """
+        support_pts = {}
+
+        for pt,y in bottom_intersections.items():
+            x_corners = []
+            z_corners = []
+
+            for x_val in [pt[0] - 1, pt[0] + 1]:
+                if (x_val,pt[1]) in bottom_intersections :
+                    x_corners.append((x_val, bottom_intersections[(x_val, pt[1])]))
+            for z_val in [pt[1] - 1, pt[1] + 1]:
+                if (pt[0], z_val) in bottom_intersections:
+                    z_corners.append((z_val, bottom_intersections[(pt[0], z_val)]))
+
+            if len(x_corners) == 2:
+                x_ang = np.rad2deg(np.arctan2((x_corners[0][1] - x_corners[1][1]), (x_corners[0][0] - x_corners[1][0])))
+            else:
+                x_ang = np.rad2deg(np.arctan2((y - x_corners[0][1]), (pt[0] - x_corners[0][0])))
+            
+            if len(z_corners) == 2:
+                z_ang = np.rad2deg(np.arctan2((z_corners[0][1] - z_corners[1][1]), (z_corners[0][0] - z_corners[1][0])))
+            else:
+                z_ang = np.rad2deg(np.arctan2((y - z_corners[0][1]), (pt[1] - z_corners[0][0])))
+
+            if (abs(x_ang) > 145) and (abs(z_ang) > 145):
+                new_y = y-1
+                if new_y > 1:
+
+                    support_pts[pt] = new_y
+
+        return support_pts
+
 
 
     def run_brute_force(self) -> float:
@@ -105,7 +136,7 @@ class Voxelizer:
         voxel_bottom_left = self.voxel_grid_min + dx * 0.5
     
         bottom_origins = []
-        bottom_intersections = []
+        bottom_intersections = {}
         # Loop over all positions in the voxel grid
         # Note that this nested loop is slow and might run for several minutes
         for x in range(nx):   
@@ -125,21 +156,22 @@ class Voxelizer:
                         bottom_origins.append(ray_origin)
                         if locations:
                             y_val = int(min(locations) / self.voxel_size)
-                            bottom_intersections.append((x, y_val, z))
+                            bottom_intersections[(x, z)] = y_val
                             
-                    
                     # Determine whether the voxel at the current grid point is inside the mesh.
                     # Recall from lectures that an odd number of intersections means inside
-                    if len(locations) % 2 == 0:
-                        voxels[x, y, z] = 0
-                    else:
-                        voxels[x, y, z] = 1
+                    # if len(locations) % 2 == 0:
+                    #     voxels[x, y, z] = 0
+                    # else:
+                    #     voxels[x, y, z] = 1
 
             print(f'Completed layer {x + 1} / {nx}')
 
-        
         # use bottom_intersections to get support points
         support_points = self.get_support_points(bottom_intersections)
+        #print(support_points)
+        for pt,y in support_points.items():
+            voxels[pt[0], y, pt[1]] = 1
 
         #generate voxels for support points
 

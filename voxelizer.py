@@ -10,6 +10,9 @@ import os
 import trimesh
 import numpy as np
 from sklearn.cluster import DBSCAN
+import matplotlib.pyplot as plt
+#%matplotlib inline
+from mpl_toolkits.mplot3d import Axes3D
 
 def write_triangle(f: TextIOWrapper, p1: np.ndarray, p2: np.ndarray, p3: np.ndarray,
                    normal: List[float]):
@@ -115,6 +118,7 @@ class Voxelizer:
 
                     support_pts[pt] = new_y
 
+        # [x, y, z, label]
         model = self.clustering(support_pts)
         print(model)
 
@@ -127,16 +131,13 @@ class Voxelizer:
             data.append([pt[0], y, pt[1]])
 
         model = DBSCAN(eps=2.5, min_samples=2)
-        model.fit_predict(data)
-        pred = model.fit_predict(data)
+        model.fit_predict(np.array(data))
+        labels = model.labels_
+        num_labels  = len(set(labels))
+        
+        samples_w_lbls = np.concatenate((data,labels[:,np.newaxis]),axis=1)
 
-        # fig = plt.figure()
-        # ax = Axes3D(fig)
-        # ax.scatter(data[:,0], data[:,1], data[:,2], c=model.labels_, s=300)
-        # ax.view_init(azim=200)
-        # plt.show()
-
-        return model.labels
+        return samples_w_lbls
 
 
 

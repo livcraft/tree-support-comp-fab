@@ -10,6 +10,7 @@ import os
 import trimesh
 import numpy as np
 from sklearn.cluster import DBSCAN
+from sklearn.neighbors import KNeighborsClassifier
 import matplotlib.pyplot as plt
 #%matplotlib inline
 from mpl_toolkits.mplot3d import Axes3D
@@ -186,6 +187,18 @@ class Voxelizer:
 
         return clusters
 
+    def knn(self, filtered_support_pts):
+        points = [[key[0], key[1]] for key in filtered_support_pts.keys()]
+
+        neigh = KNeighborsClassifier(n_neighbors=4)
+        neigh.fit(points)
+
+        point = filtered_support_pts.popitem()[0]
+        neighbors = neigh.kneighbors([point], 4, False)
+
+        print(neighbors)
+
+   
     def run_brute_force(self) -> float:
         '''
         Run brute-force voxelization.
@@ -237,6 +250,7 @@ class Voxelizer:
         # use bottom_intersections to get support points
         support_points = self.get_support_points(bottom_intersections)
         filtered_support_points = self.get_filtered_supports(support_points)
+        self.knn(filtered_support_points)
         #print(support_points)
         for pt,y in filtered_support_points.items():
             voxels[pt[0], y, pt[1]] = 1

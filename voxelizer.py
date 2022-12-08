@@ -113,14 +113,43 @@ class Voxelizer:
                 z_ang = np.rad2deg(np.arctan2((y - z_corners[0][1]), (pt[1] - z_corners[0][0])))
 
             if (abs(x_ang) > 145) and (abs(z_ang) > 145):
-                new_y = y-1
-                if new_y > 1:
+                if y > 1:
+                    support_pts[pt] = y
 
-                    support_pts[pt] = new_y
-
-        clusters = self.clustering(support_pts)
+        
 
         return support_pts
+
+    def get_filtered_supports(self, support_pts):
+        '''
+        Given input array of support points, return filtered support points (every other)
+        '''
+        clusters = self.clustering(support_pts)
+        filtered_support_pts = {}
+
+        for key, points in clusters.items():
+            min_x, max_x, min_z, max_z = self.get_bounding_points(points)
+
+            # create 3x3 kernels within cluster
+            for x in range(min_x, max_x+1, 2):
+                for z in range(min_z, max_z+1, 2):
+                    if (x, z) in support_pts:
+                        y = support_pts[(x,z)]-1
+                        if y > 1:
+                            filtered_support_pts[(x, z)] = y
+
+        return filtered_support_pts
+   
+    def get_bounding_points(self, points):
+        x_points = [point[0] for point in points]
+        z_points = [point[2] for point in points]
+
+        min_x = min(x_points)
+        max_x = max(x_points)
+        min_z = min(z_points)
+        max_z = max(z_points)
+
+        return (min_x, max_x, min_z, max_z)
 
     def clustering(self, points):
         """
@@ -156,9 +185,6 @@ class Voxelizer:
                 clusters[sample[3]].append((sample[0], sample[1], sample[2]))
 
         return clusters
-
-
-
 
     def run_brute_force(self) -> float:
         '''
@@ -210,8 +236,9 @@ class Voxelizer:
 
         # use bottom_intersections to get support points
         support_points = self.get_support_points(bottom_intersections)
+        filtered_support_points = self.get_filtered_supports(support_points)
         #print(support_points)
-        for pt,y in support_points.items():
+        for pt,y in filtered_support_points.items():
             voxels[pt[0], y, pt[1]] = 1
 
         #generate voxels for support points

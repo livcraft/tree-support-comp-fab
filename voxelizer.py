@@ -10,7 +10,7 @@ import os
 import trimesh
 import numpy as np
 from sklearn.cluster import DBSCAN
-from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neighbors import NearestNeighbors
 import matplotlib.pyplot as plt
 #%matplotlib inline
 from mpl_toolkits.mplot3d import Axes3D
@@ -187,17 +187,35 @@ class Voxelizer:
 
         return clusters
 
-    def knn(self, filtered_support_pts):
-        points = [[key[0], key[1]] for key in filtered_support_pts.keys()]
+    def knn(self, filtered_support_pts, k):
+        '''
+        given a dictionary of filtered support points
+        returns an array of the support points grouped into k nearest neighbors
+        [[(x,y,z), ...], ...]
+        '''
+        fsp_copy = deepcopy(filtered_support_pts)
+        neighbors = []
 
-        neigh = KNeighborsClassifier(n_neighbors=4)
-        neigh.fit(points)
+        while filtered_support_pts:
+            points = [[key[0], key[1]] for key in filtered_support_pts.keys()]
 
-        point = filtered_support_pts.popitem()[0]
-        neighbors = neigh.kneighbors([point], 4, False)
+            neigh = NearestNeighbors(n_neighbors=k)
+            neigh.fit(points)
 
-        print(neighbors)
+            point = filtered_support_pts.popitem()[0]
+            kneighbors = [(point[0], fsp_copy[point], point[1])]
+            neighbor_indices = neigh.kneighbors([point], k, False)
 
+            # appends neighbors
+            for i in neighbor_indices[0]:
+                kneighbors.append((points[i][0], fsp_copy[(points[i][0], points[i][1])], points[i][1]))
+                # skips the initial point
+                if ((points[i][0], points[i][1])) in filtered_support_pts:
+                    filtered_support_pts.pop((points[i][0], points[i][1]))
+            
+            neighbors.append(kneighbors)
+
+        return neighbors
    
     def run_brute_force(self) -> float:
         '''
@@ -250,7 +268,7 @@ class Voxelizer:
         # use bottom_intersections to get support points
         support_points = self.get_support_points(bottom_intersections)
         filtered_support_points = self.get_filtered_supports(support_points)
-        self.knn(filtered_support_points)
+        neighbors = self.knn(filtered_support_points, 4)
         #print(support_points)
         for pt,y in filtered_support_points.items():
             voxels[pt[0], y, pt[1]] = 1

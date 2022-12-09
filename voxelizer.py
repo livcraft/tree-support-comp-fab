@@ -117,8 +117,6 @@ class Voxelizer:
                 if y > 1:
                     support_pts[pt] = y
 
-        
-
         return support_pts
 
     def get_filtered_supports(self, support_pts):
@@ -126,18 +124,20 @@ class Voxelizer:
         Given input array of support points, return filtered support points (every other)
         '''
         clusters = self.clustering(support_pts)
-        filtered_support_pts = {}
+        filtered_support_pts = []
 
         for key, points in clusters.items():
             min_x, max_x, min_z, max_z = self.get_bounding_points(points)
-
+            this_dict = {}
             # create 3x3 kernels within cluster
             for x in range(min_x, max_x+1, 2):
                 for z in range(min_z, max_z+1, 2):
                     if (x, z) in support_pts:
                         y = support_pts[(x,z)]-1
                         if y > 1:
-                            filtered_support_pts[(x, z)] = y
+                            this_dict[(x, z)] = y
+
+            filtered_support_pts.append(this_dict)
 
         return filtered_support_pts
    
@@ -193,29 +193,80 @@ class Voxelizer:
         returns an array of the support points grouped into k nearest neighbors
         [[(x,y,z), ...], ...]
         '''
-        fsp_copy = deepcopy(filtered_support_pts)
-        neighbors = []
+        all_neighbors = []
+        for group in filtered_support_pts:
+            fsp_copy = deepcopy(group)
+            neighbors = []
 
-        while fsp_copy:
-            points = [[key[0], key[1]] for key in fsp_copy.keys()]
+            while fsp_copy:
+                points = [[key[0], key[1]] for key in fsp_copy.keys()]
+                
+                if len(points) < k:
+                    k = len(points)
 
-            neigh = NearestNeighbors(n_neighbors=k)
-            neigh.fit(points)
+                neigh = NearestNeighbors(n_neighbors=k)
+                neigh.fit(points)
 
-            point = fsp_copy.popitem()[0]
-            kneighbors = [(point[0], filtered_support_pts[point], point[1])]
-            neighbor_indices = neigh.kneighbors([point], k, False)
+                point = fsp_copy.popitem()[0]
+                kneighbors = [(point[0], group[point], point[1])]
+                neighbor_indices = neigh.kneighbors([point], k, False)
 
-            # appends neighbors
-            for i in neighbor_indices[0]:
-                kneighbors.append((points[i][0], filtered_support_pts[(points[i][0], points[i][1])], points[i][1]))
-                # skips the initial point
-                if ((points[i][0], points[i][1])) in fsp_copy:
-                    fsp_copy.pop((points[i][0], points[i][1]))
-            
-            neighbors.append(kneighbors)
+                # appends neighbors
+                for i in neighbor_indices[0]:
+                    kneighbors.append((points[i][0], group[(points[i][0], points[i][1])], points[i][1]))
+                    # skips the initial point
+                    if ((points[i][0], points[i][1])) in fsp_copy:
+                        fsp_copy.pop((points[i][0], points[i][1]))
+                
+                neighbors.append(list(set(kneighbors)))
+            all_neighbors.append(neighbors)
 
-        return neighbors
+        return all_neighbors
+
+    def extend_neighbor_support_points(self, neighbors):
+        """
+        takes in groups of neighboring support points and extends each one down to the lowest y
+        in the group
+        """
+        leftover_neighbors = {}
+        next_support_pts = []
+
+        for ng in neighbors:
+            for neighbor_group in ng:
+                # neighbor_group = list of tuple points
+                
+                # neighbor_group.sort(key = lambda x: x[1], reverse=True)
+                
+                # index = 0
+                # while index < len(neighbor_group)-1:
+                #     x,z = neighbor_group[index][0], neighbor_group[index][2]
+                #     y = neighbor_group[index][1]
+                #     while y > neighbor_group[index+1][1]:
+                #         x_dir = np.sign(neighbor_group[index+1][0] - x)
+                #         z_dir = np.sign(neighbor_group[index+1][2] - z)
+                #         next_support_pts.append((x + x_dir, y-1, z + z_dir))
+                #         y -= 1
+
+                #     if index + 1 == len(neighbor_group)-1:
+                #         leftover_neighbors[(x,z)] = neighbor_group[index + 1][1] - 1
+
+                #     index += 1
+
+                lowest = min(neighbor_group, key = lambda x: x[1])
+
+                for loc in neighbor_group:
+                    this_y = loc[1]
+                    x,z = loc[0],loc[2]
+                    x_dir = np.sign(lowest[0] - x)
+                    z_dir = np.sign(lowest[2] - z)
+
+                    while this_y >= lowest[1]:
+                        next_support_pts.append((x + x_dir, this_y - 1, z + z_dir))
+                        this_y -= 1
+                        x += x_dir
+                        z += z_dir
+
+        return next_support_pts, leftover_neighbors
    
     def run_brute_force(self) -> float:
         '''
@@ -268,10 +319,15 @@ class Voxelizer:
         # use bottom_intersections to get support points
         support_points = self.get_support_points(bottom_intersections)
         filtered_support_points = self.get_filtered_supports(support_points)
-        neighbors = self.knn(filtered_support_points, 4)
-        
-        for pt,y in filtered_support_points.items():
-            voxels[pt[0], y, pt[1]] = 1
+        neighbors = self.knn(filtered_support_points, 3)
+        next_supports, next_neighs = self.extend_neighbor_support_points(neighbors)
+        # print(neighbors)
+        for group in filtered_support_points:
+            for pt,y in group.items():
+                voxels[pt[0], y, pt[1]] = 1
+
+        for nxt in next_supports:
+            voxels[nxt[0], nxt[1], nxt[2]] = 1
 
         #generate voxels for support points
 

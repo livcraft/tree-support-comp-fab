@@ -298,6 +298,8 @@ class Voxelizer:
                         if x_dir != 0 or z_dir != 0:
                             # adds both this point and lower point (for support on sharp beams)
                             next_support_pts.append((int(this_pt[0]+x_dir), this_pt[1], int(this_pt[2]+z_dir)))
+                            next_support_pts.append((int(this_pt[0]+x_dir), this_pt[1], int(this_pt[2])))
+                            next_support_pts.append((int(this_pt[0]), this_pt[1], int(this_pt[2]+z_dir)))
                             next_support_pts.append(new_pt)
                             next_support_pts.append((int(this_pt[0]+x_dir), this_pt[1]-1, int(this_pt[2])))
                             next_support_pts.append((int(this_pt[0]), this_pt[1]-1, int(this_pt[2]+z_dir)))
@@ -368,7 +370,7 @@ class Voxelizer:
     
         bottom_origins = []
         bottom_intersections = {}
-        # min_ray = 0
+        
         # Loop over all positions in the voxel grid
         # Note that this nested loop is slow and might run for several minutes
         for x in range(nx):   
@@ -383,11 +385,9 @@ class Voxelizer:
 
                     # Intersect the ray with the mesh and get the intersection locations
                     locations = single_ray_mesh_intersection(mesh, ray_origin, ray_direction)
-                    # print(ray_origin[1])
-                    # if ray_origin[1] < min_ray:
-                    #     min_ray = ray_origin[1]
+                   
                     # if ray is on the bottom layer of the voxel grid, will add to bottom intersections
-                    if ray_origin[1] <= -4.9:
+                    if ray_origin[1] <= -4.95:
                         bottom_origins.append(ray_origin)
                         if locations:
                             # adds the bottom layer of the voxel mesh into dictionary of intersections
@@ -403,11 +403,11 @@ class Voxelizer:
 
             print(f'Completed layer {x + 1} / {nx}')
 
-        # print(min_ray)
+        
         # use bottom_intersections to get support points
-        # print(bottom_intersections)
+        
         support_points = self.get_support_points(bottom_intersections)
-        # print(support_points)
+        
         # filters support points by clustering
         filtered_support_points = self.get_filtered_supports(support_points)
      

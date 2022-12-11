@@ -136,8 +136,8 @@ class Voxelizer:
             for x in range(min_x, max_x+1, 2):
                 for z in range(min_z, max_z+1, 2):
                     if (x, z) in support_pts:
-                        y = support_pts[(x,z)]-1
-                        if y > 1:
+                        y = support_pts[(x,z)]
+                        if y > 2:
                             this_dict[(x, z)] = y
 
             filtered_support_pts.append(this_dict)
@@ -213,14 +213,12 @@ class Voxelizer:
                 if len(points) < k:
                     k = len(points)
 
-                # print(k)
                 neigh = NearestNeighbors(n_neighbors=k, metric='cityblock', algorithm='brute')
                 neigh.fit(points)
 
                 point = fsp_copy.popitem()[0]
                 kneighbors = [(point[0], group[point], point[1])]
                 neighbor_indices = neigh.kneighbors([point], k, False)
-                # print(neighbor_indices)
 
                 # appends neighbors
                 for i in neighbor_indices[0]:
@@ -239,12 +237,18 @@ class Voxelizer:
 
     def find_neighbor_average(self, ng):
         """
-        finds average x and z values of points in group, finds lowest y
+        given a list of lists of neighbor groups
+        finds average x and z values of points in group, finds lowest y value of branch can go
+        returns as x,y,z tuple
         """
         avg_x = np.rint(sum([x for x,y,z in ng])/len(ng))
+        # finds how far x is off average
         x_dist = max(ng, key = lambda x: x[0])[0] - min(ng, key = lambda x: x[0])[0]
+
         lowest_y = min(ng, key = lambda x: x[1])[1]
+
         avg_z = np.rint(sum([z for x,y,z in ng])/len(ng))
+        # finds how far z is off average
         z_dist = max(ng, key = lambda x: x[2])[2] - min(ng, key = lambda x: x[2])[2]
 
         return (avg_x, max(lowest_y-max(x_dist, z_dist), 0), avg_z)
@@ -264,11 +268,14 @@ class Voxelizer:
                 this_group = deepcopy(neighbor_group)
                 seen = set()
 
+                # calculates average x and z value of cluster, as well as lowest y
                 avg_pt = np.array(self.find_neighbor_average(neighbor_group))
+                # sorts group based off distance to the average point
                 this_group.sort(key = lambda x: np.linalg.norm(avg_pt - x), reverse=True)
                 
                 while len(this_group) > 0:
 
+                    # if there's only one point, just need to extend it downwards
                     if len(this_group) == 1:
                         new_y = this_group[0][1] - 1
                         if new_y > 0:
@@ -276,24 +283,30 @@ class Voxelizer:
                             next_support_pts.append((this_group[0][0], new_y, this_group[0][2]))
                         break
 
-                    this_pt = this_group.pop()           
+                    this_pt = this_group.pop(0)           
 
+                    # calculates way to grow in the x and z direction
                     x_dir = np.sign(avg_pt[0] - this_pt[0])
                     z_dir = np.sign(avg_pt[2] - this_pt[2])
 
+                    # calculates new point location based off growth
                     new_pt = (int(this_pt[0]+x_dir), this_pt[1]-1, int(this_pt[2]+z_dir))
 
                     if new_pt not in seen and new_pt not in this_group and new_pt[1] > 0 and len(this_group) > 0:
                         next_support_pts.append(new_pt)
 
                         if x_dir != 0 or z_dir != 0:
+                            # adds both this point and lower point (for support on sharp beams)
                             next_support_pts.append((int(this_pt[0]+x_dir), this_pt[1], int(this_pt[2]+z_dir)))
+                            next_support_pts.append(new_pt)
 
                         this_group.append(new_pt)
+                        # sorts group based off distance to the average point
                         this_group.sort(key = lambda x: np.linalg.norm(avg_pt - np.array(x)), reverse=True)
 
                         seen.add(new_pt)
 
+            # add new bottom intersections in list of dictionaries for next round
             if these_intersections is not None:
                 new_bottom_intersections.append(these_intersections)
 
@@ -333,46 +346,56 @@ class Voxelizer:
                     # Intersect the ray with the mesh and get the intersection locations
                     locations = single_ray_mesh_intersection(mesh, ray_origin, ray_direction)
 
+                    # if ray is on the bottom layer of the voxel grid, will add to bottom intersections
                     if ray_origin[1] <= -4.98:
                         bottom_origins.append(ray_origin)
                         if locations:
+                            # adds the bottom layer of the voxel mesh into dictionary of intersections
                             y_val = int(min(locations) / self.voxel_size)
                             bottom_intersections[(x, z)] = y_val
                             
                     # Determine whether the voxel at the current grid point is inside the mesh.
                     # Recall from lectures that an odd number of intersections means inside
-                    # if len(locations) % 2 == 0:
-                    #     voxels[x, y, z] = 0
-                    # else:
-                    #     voxels[x, y, z] = 1
+                    if len(locations) % 2 == 0:
+                        voxels[x, y, z] = 0
+                    else:
+                        voxels[x, y, z] = 1
 
             print(f'Completed layer {x + 1} / {nx}')
 
         # use bottom_intersections to get support points
         support_points = self.get_support_points(bottom_intersections)
+        # filters support points by clustering
         filtered_support_points = self.get_filtered_supports(support_points)
      
-        neighbors = self.knn(filtered_support_points, 3)
+        # uses KNN algorithm to cluster neighbors of support points, with K = 2
+        neighbors = self.knn(filtered_support_points, 2)
+        # generates next round of supports and neighbors
         next_supports, next_bottom_intersections = self.extend_neighbor_support_points(neighbors)
         
         while next_bottom_intersections != []:
-            these_neighbors = self.knn(next_bottom_intersections, 3)
-            
+            # get neighbors of current bottom intersection
+            these_neighbors = self.knn(next_bottom_intersections, 2)
+            # extends current bottom intersections
             these_next_supports, next_bottom_intersections = self.extend_neighbor_support_points(these_neighbors)
-
+            # adds new support points to next_supports
             next_supports.extend(these_next_supports)
 
-        # print(neighbors)
+        # fills in filtered support points from first pass
         for group in filtered_support_points:
             for pt,y in group.items():
                 voxels[pt[0], y, pt[1]] = 1
 
+        # fills in voxels from recursive support point algorithm
         for nxt in next_supports:
             voxels[nxt[0], nxt[1], nxt[2]] = 1
 
-        #generate voxels for support points
-
-        #make this a loop while support points still exist
+        # adds horizontal to bottom of support beams
+        needs_bottom_support = [(x,y,z) for x,y,z in next_supports if y == 1]
+        for vx,vy,vz in needs_bottom_support:
+            for i in [-1,0,1]:
+                for j in [-1,0,1]:
+                    voxels[vx+i, vy, vz+j] = 1
 
         # Compute the occupancy of the voxel grid, i.e., the fraction of voxels inside the mesh
         occupancy = np.count_nonzero(voxels) / voxels.size

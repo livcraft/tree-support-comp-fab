@@ -299,6 +299,8 @@ class Voxelizer:
                             # adds both this point and lower point (for support on sharp beams)
                             next_support_pts.append((int(this_pt[0]+x_dir), this_pt[1], int(this_pt[2]+z_dir)))
                             next_support_pts.append(new_pt)
+                            next_support_pts.append((int(this_pt[0]+x_dir), this_pt[1]-1, int(this_pt[2])))
+                            next_support_pts.append((int(this_pt[0]), this_pt[1]-1, int(this_pt[2]+z_dir)))
 
                         this_group.append(new_pt)
                         # sorts group based off distance to the average point
@@ -312,6 +314,41 @@ class Voxelizer:
 
         return next_support_pts, new_bottom_intersections
    
+
+    def add_bottom_supports(self, next_supports):
+        """
+        Given next supports as a list of (x,y,z) coords
+        Returns list of (x,y,z) coords of voxels to fill in for supports
+        """
+        needs_bottom_support = [(x,y,z) for x,y,z in next_supports if y == 1]
+        added_supports = []
+
+        needs_ring = []
+
+        for vx,vy,vz in needs_bottom_support:
+            for i in [-1,0,1]:
+                for j in [-1,0,1]:
+                    added_supports.append((vx+i, vy, vz+j))
+                    y_count = vy+1
+                    height_counter = 0
+
+                    while (vx, y_count, vz) in next_supports:
+                        added_supports.append((vx+i, y_count, vz+j))
+                        y_count += 1
+                        height_counter += 1
+
+                    bottom_ring = int(height_counter / 8)
+                    if bottom_ring > 0:
+                        needs_ring.append((vx,vy,vz, bottom_ring))
+
+        for vx,vy,vz,ring_size in needs_ring:
+            ring_size = min(ring_size, 5)
+            for i in range(-ring_size,ring_size+1):
+                for j in range(-ring_size,ring_size+1):
+                    added_supports.append((vx+i, vy, vz+j))
+        
+        return added_supports
+
 
     def run_brute_force(self) -> float:
         '''
@@ -381,6 +418,9 @@ class Voxelizer:
             # adds new support points to next_supports
             next_supports.extend(these_next_supports)
 
+        bottom_supports = self.add_bottom_supports(next_supports)
+        next_supports.extend(bottom_supports)
+
         # fills in filtered support points from first pass
         for group in filtered_support_points:
             for pt,y in group.items():
@@ -388,14 +428,13 @@ class Voxelizer:
 
         # fills in voxels from recursive support point algorithm
         for nxt in next_supports:
-            voxels[nxt[0], nxt[1], nxt[2]] = 1
+            try:
+                voxels[nxt[0], nxt[1], nxt[2]] = 1
+            except IndexError:
+                continue
 
         # adds horizontal to bottom of support beams
-        needs_bottom_support = [(x,y,z) for x,y,z in next_supports if y == 1]
-        for vx,vy,vz in needs_bottom_support:
-            for i in [-1,0,1]:
-                for j in [-1,0,1]:
-                    voxels[vx+i, vy, vz+j] = 1
+                        
 
         # Compute the occupancy of the voxel grid, i.e., the fraction of voxels inside the mesh
         occupancy = np.count_nonzero(voxels) / voxels.size
